@@ -14,7 +14,7 @@ st.set_page_config(
 
 
 # -----------------------------
-# Load Data
+# Load Dataset
 # -----------------------------
 @st.cache_data
 def load_data():
@@ -25,126 +25,112 @@ df = load_data()
 
 
 # -----------------------------
-# Title
+# Header
 # -----------------------------
 st.title("🌍 Unified Military Analytics Dashboard")
-st.subheader("Nation Overview Prototype")
+st.markdown("### Nation Overview - Military Power Analysis")
 
 
 # -----------------------------
-# Check Dataset
+# Sidebar
 # -----------------------------
-st.success("Dataset Loaded Successfully")
+st.sidebar.header("🔎 Filters")
 
 
-
-# -----------------------------
-# Sidebar Filters
-# -----------------------------
-st.sidebar.header("Dashboard Filters")
-
-
-country_column = "country"
-
-if country_column in df.columns:
-
-    country = st.sidebar.selectbox(
-        "Select Country",
-        sorted(df[country_column].dropna().unique())
-    )
-
-    selected = df[
-        df[country_column] == country
-    ]
-
-else:
-    st.error("Country column not found")
+if "country" not in df.columns:
+    st.error("Country column not found in dataset")
     st.stop()
 
 
+country = st.sidebar.selectbox(
+    "Select Country",
+    sorted(df["country"].dropna().unique())
+)
+
+
+selected = df[df["country"] == country]
+
 
 # -----------------------------
-# Country Heading
-# -----------------------------
-st.header(f"Military Overview : {country}")
-
-
-
-# -----------------------------
-# KPI Section
+# KPI CARDS
 # -----------------------------
 
-st.subheader("Key Performance Indicators")
+st.subheader(f"📌 {country} Key Metrics")
 
 
-available_columns = [
-    "defense_budget",
-    "total_aircraft",
-    "active_personnel",
-    "power_index",
-    "assets_per_capita",
-    "budget_to_gdp_ratio"
+kpis = [
+    ("Defense Budget", "defense_budget"),
+    ("Total Aircraft", "total_aircraft"),
+    ("Active Personnel", "active_personnel"),
+    ("Power Index", "power_index"),
+    ("Assets per Capita", "assets_per_capita"),
+    ("Budget GDP Ratio", "budget_to_gdp_ratio")
 ]
 
 
-kpi_columns = []
-
-for col in available_columns:
-    if col in df.columns:
-        kpi_columns.append(col)
-
+available_kpis = [
+    k for k in kpis
+    if k[1] in df.columns
+]
 
 
-cols = st.columns(len(kpi_columns))
+columns = st.columns(len(available_kpis))
 
 
-for i, col in enumerate(kpi_columns):
+for i, (name, col) in enumerate(available_kpis):
 
     value = selected[col].iloc[0]
 
-    cols[i].metric(
-        col.replace("_"," ").title(),
+    columns[i].metric(
+        name,
         value
     )
-
 
 
 # -----------------------------
 # Military Assets Chart
 # -----------------------------
 
-st.subheader("Military Assets")
+st.divider()
+
+st.subheader("⚔️ Military Assets")
 
 
-asset_columns = [
+asset_list = [
     "total_aircraft",
     "tanks",
     "naval_assets"
 ]
 
 
-available_assets = []
-
-for col in asset_columns:
-    if col in df.columns:
-        available_assets.append(col)
-
+available_assets = [
+    x for x in asset_list
+    if x in df.columns
+]
 
 
-if len(available_assets) > 0:
+if available_assets:
 
-    asset_data = selected[available_assets].T.reset_index()
+    asset_values = []
 
-    asset_data.columns=[
-        "Asset",
-        "Value"
-    ]
+    for asset in available_assets:
+
+        asset_values.append(
+            {
+                "Asset": asset.replace("_"," ").title(),
+                "Value": selected[asset].iloc[0]
+            }
+        )
+
+
+    asset_df = pd.DataFrame(asset_values)
 
 
     fig = px.bar(
-        asset_data,
+        asset_df,
         x="Asset",
         y="Value",
+        text="Value",
         title="Military Asset Strength"
     )
 
@@ -155,6 +141,12 @@ if len(available_assets) > 0:
     )
 
 
+else:
+
+    st.warning(
+        "No military asset columns available"
+    )
+
 
 # -----------------------------
 # Region Comparison
@@ -162,10 +154,13 @@ if len(available_assets) > 0:
 
 if "region" in df.columns and "defense_budget" in df.columns:
 
-    st.subheader("Regional Defense Budget Comparison")
+
+    st.divider()
+
+    st.subheader("🌎 Defense Budget by Region")
 
 
-    region_data = (
+    region_df = (
         df.groupby("region")
         ["defense_budget"]
         .sum()
@@ -174,10 +169,10 @@ if "region" in df.columns and "defense_budget" in df.columns:
 
 
     fig2 = px.bar(
-        region_data,
+        region_df,
         x="region",
         y="defense_budget",
-        title="Defense Budget by Region"
+        title="Regional Defense Budget"
     )
 
 
@@ -187,15 +182,18 @@ if "region" in df.columns and "defense_budget" in df.columns:
     )
 
 
-
 # -----------------------------
-# Dataset View
+# Data Table
 # -----------------------------
 
-with st.expander("View Selected Country Data"):
+st.divider()
 
-    st.dataframe(selected)
+with st.expander("📄 View Country Data"):
 
+    st.dataframe(
+        selected,
+        use_container_width=True
+    )
 
 
 # -----------------------------
@@ -205,8 +203,17 @@ with st.expander("View Selected Country Data"):
 st.markdown(
 """
 ---
-**Module 4 Prototype**
-Unified Military Analytics Dashboard  
-Built using Python + Streamlit
+### Module 4 Prototype
+Built using:
+- Python
+- Streamlit
+- Pandas
+- Plotly
+
+Features:
+✔ Interactive country filter  
+✔ KPI cards  
+✔ Military asset visualization  
+✔ Economic comparison
 """
 )
